@@ -1,43 +1,47 @@
-# CLAUDE.md: System Instructions & Agent Protocols
+# CLAUDE.md — web app
 
-## 1. Core Objective & Mindset
-Act as a senior software engineer and technical investigator. Optimize for correctness, robust solutions, and minimal assumptions. Prefer deep investigation over quick guesses.
-*   **Investigate First:** If a problem involves multiple components, trace the flow across the repository before writing code.
-*   **Reuse over Rebuild:** Before creating utilities, helpers, or abstractions, search the repo to ensure an equivalent doesn't already exist.
-*   **Root Cause Focus:** Do not blindly patch symptoms. Trace execution paths, identify actual failure points, and implement the smallest robust fix.
+Stack-specific rules for this project. Shared, repo-wide principles live in the root
+[`CLAUDE.md`](../CLAUDE.md) — read that first if you haven't.
 
-## 2. Token & Output Maximization (CRITICAL)
-*   **Zero Truncation:** NEVER use placeholders, ellipses, or comments like `// ... rest of code` or `/* existing implementation */`. 
-*   **Complete Deliverables:** Always output the absolute entirety of the requested code or file. You must prioritize using your maximum output token limit to provide complete, runnable solutions.
-*   **Continuous Generation:** If you mathematically cannot fit the entire output into a single response limit, stop exactly at the cutoff point. Await the prompt "continue" to resume precisely where you left off.
-*   **No Filler:** Skip all pleasantries, summaries, and intro/outro fluff. Begin immediately with the technical solution.
+## Stack
 
-## 3. Formatting & File Standards
-*   **Strict File Order:** Always keep file order exactly as provided in the prompt/context unless explicitly instructed to change it. Rely on the database `sortIndex` for UI rendering; never default to alphabetical sorting.
-*   **External Links:** Whenever generating markdown or HTML that includes external links, always configure them to open in a new tab (e.g., `target="_blank"`). This applies to TipTap extensions and Markdown serialization.
-*   **Output Discipline:** Do not narrate every trivial tool call or investigative step. Only provide explanations if explicitly asked, and place them *after* the code blocks.
+- **Frontend:** React + TypeScript, built with Vite.
+- **Storage:** Browser IndexedDB via `Dexie.js` (+ `dexie-react-hooks`) is the source of truth.
+  Folder structures are flattened into a single `documents` table using explicit `path` strings
+  (e.g. `/Projects/Wiki.md`); UI order is driven by an integer `sortIndex`, never alphabetical.
+- **Editor:** `@tiptap/react` — a WYSIWYG surface that parses Markdown on load and serializes back
+  to raw `.md` on save.
+- **Metadata:** `gray-matter` strips YAML frontmatter before it reaches the editor; tags/dates/
+  custom properties are managed via the Context Sidebar and re-stringified on save.
+- **Search:** `FlexSearch`, a client-side in-memory index built from IndexedDB on load.
+- **Sync:** Dropbox API v2 is an optional, not-yet-implemented background sync worker (see
+  `backlog.md`) — everything must keep working fully offline without it.
+- **Dependencies:** don't add a new one unless the runtime genuinely lacks the capability and
+  nothing already in the repo covers it.
 
-## 4. Scope Management & Backlog Protocol
-*   **Strict Backlog Usage:** If a new feature idea, edge case, or non-critical bug is discovered, DO NOT implement it on the fly. Immediately log it in `backlog.md`.
-*   **Zero Scope Creep:** Keep generated code strictly confined to the explicit objective of the current prompt. Protect the token budget by deferring all secondary improvements.
-*   **Format:** Append items to `backlog.md` using tags: `[BUG]`, `[FEATURE]`, `[REFACTOR]`, `[DEBT]`, followed by a concise description and affected files.
+## Architecture rules
 
-## 5. Technology Stack & Environment Rules
-*   **Primary Ecosystem:** React, TypeScript, Vite.
-*   **Infrastructure (Storage):** Offline-first via browser IndexedDB. Wrapper: `Dexie.js` (with `dexie-react-hooks`). Flat storage schema using `path` strings to emulate folder structures.
-*   **Core Editor & Data:** 
-    *   `@tiptap/react` (WYSIWYG Markdown interface).
-    *   `gray-matter` (YAML Frontmatter parsing for tags and metadata).
-    *   `FlexSearch` (Client-side, in-memory indexing).
-*   **Sync & API:** Dropbox API v2 (Optional background sync worker).
-*   **Dependencies:** Do not add external dependencies unless the runtime lacks the capability and the repository doesn't already have an equivalent tool. All core functionality must work completely offline.
+- Never load raw YAML frontmatter into the TipTap editor canvas — strip it with `gray-matter`
+  first, manage it in React state, re-stringify on save.
+- Files must round-trip as pure, portable `.md` — both locally and on Dropbox. Never persist HTML
+  blobs to the database.
+- When a file or folder moves, run the background regex refactor across dependent `.md` files so
+  wiki-links (`[[Link]]`) stay valid — don't leave links dangling.
+- External links (in generated Markdown or HTML, including TipTap extensions and Markdown
+  serialization) always open in a new tab (`target="_blank"`).
 
-## 6. Architecture & State Rules
-*   **Separation of Concerns:** Never load raw YAML frontmatter into the TipTap editor canvas. Use `gray-matter` to strip it on load, manage metadata in React state (Sidebar), and re-stringify on save.
-*   **File Portability:** Files must be saved locally and on Dropbox as pure, portable `.md` files. Do not save HTML blobs to the database.
-*   **Graph Integrity:** When files or folders move, execute a background regex refactor across all dependent `.md` files to update wiki-links (`[[Link]]`).
+## Backlog protocol
 
-## 7. Security & State Changes
-*   **Database/API Changes:** Never make destructive schema changes or breaking API changes without explicit confirmation. Check migrations, callers, and compatibility first.
-*   **Version Control:** Do not overwrite unrelated user changes. Keep changes focused and atomic. When asked, output exact commit commands (e.g., `git commit -m "..."`) without explanations.
-*   **Secrets:** Never expose secrets, API keys, or hardcoded credentials in source code, logs, or commits. Treat security as a first-class concern.
+If you find a new feature idea, edge case, or non-critical bug while working on something else,
+don't implement it inline — log it in `backlog.md` using `[BUG]` / `[FEATURE]` / `[REFACTOR]` /
+`[DEBT]`, a concise description, and the affected files. Keep the current task's diff focused.
+
+## Commands
+
+```bash
+npm install
+npm run dev       # vite dev server
+npm run build     # tsc -b && vite build
+npm run lint      # oxlint
+npm run preview
+```

@@ -8,4 +8,3 @@
 
 [DEBT] The FlexSearch index lives in a module-level singleton in `src/lib/search.ts`, rebuilt once per app load from IndexedDB and updated incrementally afterward. Two tabs open at once each keep their own index in memory; edits made in one tab won't affect the other tab's search results until it reloads.
 
-[FEATURE] The `[[Title]]` wiki-link autocomplete popup filters by plain substring match only (no fuzzy scoring/ranking). Files: src/editor/extensions/wikiLink.ts.

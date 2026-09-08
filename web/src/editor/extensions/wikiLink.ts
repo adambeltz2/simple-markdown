@@ -2,6 +2,7 @@ import { InputRule, mergeAttributes, Node } from '@tiptap/core';
 import { PluginKey } from '@tiptap/pm/state';
 import Suggestion from '@tiptap/suggestion';
 import type { DocumentSummary } from '../../types';
+import { fuzzyFilterAndSort } from '../../lib/fuzzyMatch';
 import { createWikiLinkSuggestionRender } from './wikiLinkSuggestionRender';
 
 export interface WikiLinkOptions {
@@ -177,9 +178,9 @@ export const WikiLink = Node.create<WikiLinkOptions>({
         allowSpaces: true,
         pluginKey: WikiLinkSuggestionPluginKey,
         items: ({ query }) => {
-          const q = query.trim().toLowerCase();
+          const q = query.trim();
           const all = this.options.getDocuments();
-          return (q ? all.filter((d) => d.title.toLowerCase().includes(q)) : all).slice(0, 8);
+          return q ? fuzzyFilterAndSort(q, all, (d) => d.title, 8) : all.slice(0, 8);
         },
         command: ({ editor, range, props }) => {
           editor

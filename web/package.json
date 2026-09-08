@@ -7,7 +7,9 @@
     "dev": "node node_modules/vite/bin/vite.js",
     "build": "node node_modules/typescript/bin/tsc -b && node node_modules/vite/bin/vite.js build",
     "lint": "node node_modules/oxlint/bin/oxlint",
-    "preview": "node node_modules/vite/bin/vite.js preview"
+    "preview": "node node_modules/vite/bin/vite.js preview",
+    "test": "node node_modules/vitest/vitest.mjs run",
+    "test:watch": "node node_modules/vitest/vitest.mjs"
   },
   "dependencies": {
     "@tiptap/core": "^3.31.3",
@@ -37,6 +39,7 @@
     "@vitejs/plugin-react": "^6.1.0",
     "oxlint": "^1.79.0",
     "typescript": "~6.0.2",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vitest": "^5.0.0"
   }
 }
