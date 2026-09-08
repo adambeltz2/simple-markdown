@@ -4,6 +4,22 @@ A web-based, offline-first personal knowledge management application. It combine
 
 **Live app:** https://adambeltz2.github.io/simple-markdown/ (deployed automatically from `main`, see [Deployment](#deployment) below)
 
+## Features
+
+- **File tree** with folders, drag-and-drop move/reorder, and instant client-side search.
+- **WYSIWYG Markdown editor** (TipTap) with a formatting toolbar (bold/italic/strike, headings,
+  lists, task lists, quote, code block, rule) that round-trips to plain `.md` — content is
+  autosaved to IndexedDB as you type.
+- **`[[Wiki-links]]`** between notes, with fuzzy-ranked autocomplete and a live backlinks panel.
+- **Frontmatter-backed metadata** — tags and arbitrary key/value properties, edited via the
+  context sidebar and stored as real YAML frontmatter on save.
+- **Single-document import/export** of `.md` files; whole-vault import/export is not built yet
+  (see `backlog.md`).
+- **Responsive layout:** a 3-column desktop view (file tree / editor / metadata), collapsing to a
+  single full-width pane below 768px — note list → editor (with a back button) → metadata as a
+  slide-in drawer. See `src/App.css`'s "Mobile (single-pane) layout" section.
+- **Dropbox sync** is scaffolded (the `dropbox` dependency is installed) but not implemented yet.
+
 ## 🏗 System Architecture
 
 The application is built to run entirely in the browser without requiring a backend server.
@@ -13,6 +29,32 @@ The application is built to run entirely in the browser without requiring a back
 *   **Editor (TipTap):** Provides a rich text editing experience. It natively parses Markdown on load and serializes back to raw `.md` on save.
 *   **Metadata (gray-matter):** YAML frontmatter is intercepted before reaching the editor, allowing tags, dates, and custom properties to be managed via dedicated UI inputs in the Context Sidebar.
 *   **Search (FlexSearch):** Upon load, a multi-entry index maps titles, tags, and document content for instant client-side querying. The `[[wiki-link]]` autocomplete ranks candidates with a fuzzy subsequence matcher (`src/lib/fuzzyMatch.ts`).
+
+## Project structure
+
+```
+src/
+├── App.tsx / App.css          # Root component + all app styling (incl. responsive layout)
+├── main.tsx, index.css        # Entry point, CSS variables/theme (light + prefers-color-scheme dark)
+├── types.ts                   # Shared domain types (DocumentRecord, LinkRecord, TreeNode, …)
+├── components/
+│   ├── AppShell.tsx           # Top-level layout: sidebar / editor / context panel + mobile view state
+│   ├── Sidebar.tsx             # File tree: search, create, import, drag-and-drop, rename, delete
+│   ├── EditorPane.tsx          # Active document header (title, back/export/info) + editor host
+│   └── ContextSidebar.tsx      # Metadata: created/updated, tags, properties, backlinks
+├── editor/
+│   ├── MarkdownEditor.tsx      # TipTap instance + formatting toolbar
+│   └── extensions/wikiLink.ts  # Custom TipTap node for [[wiki-links]] + suggestion popup
+├── db/
+│   ├── db.ts                   # Dexie schema (documents, links)
+│   ├── documents.ts            # CRUD: create/rename/move/reorder/delete, keeps search index in sync
+│   └── links.ts                 # Wiki-link resolution + backlinks
+├── hooks/
+│   ├── useAppState.tsx          # App-wide context: documents, selection, search, panel state
+│   └── useDebouncedCallback.ts  # Debounce helper used for autosave
+└── lib/                          # Pure, unit-tested logic — pathUtils, frontmatter, wikilink,
+                                    fuzzyMatch, search (no React/DOM dependencies)
+```
 
 ## 🗄 Database Schema
 
@@ -56,7 +98,13 @@ which installs dependencies, lints, runs the test suite, builds with `VITE_BASE_
 GitHub Pages project page, and publishes `dist/` via GitHub's official Pages actions. You can also
 trigger it manually from the Actions tab (`workflow_dispatch`).
 
-This only works once **Settings → Pages → Build and deployment → Source** is set to
-**GitHub Actions** for the repository (one-time, manual — GitHub doesn't allow enabling Pages via
-the API used here). Until that's flipped, the workflow will run but the deploy job will fail with
-a "Pages site not found" style error.
+This requires **Settings → Pages → Build and deployment → Source** to be set to **GitHub Actions**
+for the repository (already done — noted here since it's a one-time manual step GitHub doesn't
+expose through the API, so it'd need redoing if the repo were ever recreated).
+
+## Known gaps / where to look next
+
+See `backlog.md` for the full, current list. The most notable gaps right now: no offline/PWA
+support (so, ironically, an "offline-first" app still needs network to load itself the first
+time — see the backlog item), no whole-vault import/export, and no UI feedback for in-progress
+autosaves.
