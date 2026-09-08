@@ -9,7 +9,7 @@ import MarkdownEditor from '../editor/MarkdownEditor';
 import type { DocumentSummary } from '../types';
 
 export default function EditorPane() {
-  const { selectedId, setSelectedId, documents } = useAppState();
+  const { selectedId, setSelectedId, documents, toggleRightSidebar } = useAppState();
   const activeDoc = useLiveQuery(
     async () => (selectedId ? db.documents.get(selectedId) : undefined),
     [selectedId],
@@ -65,6 +65,9 @@ export default function EditorPane() {
   return (
     <main className="editor-pane">
       <header className="editor-pane__header">
+        <button className="editor-pane__back" title="Back to notes" onClick={() => setSelectedId(null)}>
+          ‹ Notes
+        </button>
         <input
           key={activeDoc.id}
           ref={titleInputRef}
@@ -76,6 +79,9 @@ export default function EditorPane() {
           }}
         />
         <span className="editor-pane__path">{activeDoc.path}</span>
+        <button className="editor-pane__meta-toggle" title="Note info" onClick={toggleRightSidebar}>
+          ⓘ
+        </button>
         <button className="editor-pane__export" onClick={handleExport}>
           Export .md
         </button>

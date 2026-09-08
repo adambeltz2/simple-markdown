@@ -21,7 +21,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const documents = useLiveQuery(() => db.documents.toArray(), [], []) ?? [];
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isRightSidebarOpen, setRightSidebarOpen] = useState(true);
+  const [isRightSidebarOpen, setRightSidebarOpen] = useState(
+    () => typeof window === 'undefined' || window.matchMedia('(min-width: 769px)').matches,
+  );
   const [indexReady, setIndexReady] = useState(false);
 
   useEffect(() => {

@@ -191,6 +191,11 @@ input:not([type]) {
   font-size: 12px;
 }
 
+.editor-pane__back,
+.editor-pane__meta-toggle {
+  display: none;
+}
+
 .markdown-editor {
   flex: 1;
   overflow-y: auto;
@@ -503,4 +508,80 @@ input:not([type]) {
 .link-button:hover {
   text-decoration: underline;
   background: transparent;
+}
+
+/* ---------- Mobile (single-pane) layout ---------- */
+/* Below this width the sidebar (260px) + context panel (280px) leave no room
+   for the editor, so we show one pane at a time instead of a 3-column flex row. */
+@media (max-width: 768px) {
+  .context-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 9;
+  }
+
+  .sidebar {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+
+  .app-shell[data-mobile-view='editor'] .sidebar {
+    display: none;
+  }
+
+  .app-shell[data-mobile-view='list'] .editor-pane {
+    display: none;
+  }
+
+  .app-shell__reopen-panel {
+    display: none;
+  }
+
+  .editor-pane__back,
+  .editor-pane__meta-toggle {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+  }
+
+  .editor-pane__header {
+    padding: 10px 12px 6px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .editor-pane__path {
+    display: none;
+  }
+
+  .markdown-editor {
+    padding: 0 14px 40px;
+  }
+
+  .context-sidebar--empty {
+    display: none;
+  }
+
+  .context-sidebar:not(.context-sidebar--empty) {
+    position: fixed;
+    inset: 0;
+    left: auto;
+    width: 100%;
+    max-width: 340px;
+    z-index: 10;
+  }
+
+  /* Touch has no hover, so per-row actions and tap targets need to be reachable directly. */
+  .tree-node__row {
+    min-height: 40px;
+  }
+
+  .tree-node__actions {
+    display: flex;
+  }
+
+  .sidebar__actions button {
+    padding: 8px 6px;
+  }
 }
