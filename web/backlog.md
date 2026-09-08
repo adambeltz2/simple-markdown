@@ -15,11 +15,13 @@ to the bottom.
 
 ## Medium priority
 
-[FEATURE] Whole-vault import/export (zip, or a folder picker via the File System Access API). Only single-document import (`+ Import`) and export (`Export .md`) exist today. Files: src/components/Sidebar.tsx, src/components/EditorPane.tsx.
+[FEATURE] Whole-vault zip import/export, for browsers without the File System Access API (Safari, all mobile browsers) — desktop Chrome/Edge now has real folder-binding instead (`src/lib/localFolder.ts`, see Deployment/Known gaps in README), but everywhere else still only has single-document import/export. Files: src/components/Sidebar.tsx, src/components/EditorPane.tsx.
 
 [FEATURE] No save-status feedback — content autosaves via a 400ms debounce (src/components/EditorPane.tsx) with nothing in the UI showing "Saving…" / "Saved", so a user can't tell whether their last keystroke is persisted yet. Cheap to add, meaningfully improves trust in the autosave.
 
 [DEBT] Inconsistent keyboard submit in the context sidebar (src/components/ContextSidebar.tsx): the tag input submits on Enter, but the property key/value inputs only submit via the "Add" button. Give the property inputs the same Enter handling. Trivial fix.
+
+[DEBT] Local folder sync (src/lib/localFolder.ts) only re-scans on connect/reconnect — an external edit to a file (made outside the browser, e.g. in another editor) while the tab stays open won't be picked up until you disconnect and reconnect. There's also no conflict resolution: if a file changes both in-app and on disk between scans, the app's next write silently overwrites the on-disk version. A `FileSystemObserver` (where supported) or periodic re-scan would close this gap.
 
 [FEATURE] Dropbox API v2 background sync worker. README lists this as optional; the `dropbox` package is installed but no sync code exists yet — needs a user-supplied Dropbox app key and an OAuth flow before it can be built. Real feature but the highest-effort item here (external OAuth flow, background worker). Files: none yet (would live in `src/lib/dropbox.ts`).
 

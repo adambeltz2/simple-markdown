@@ -5,6 +5,7 @@ import { basename, dirname, isDescendantPath, joinPath, titleFromPath } from '..
 import { renameWikiLinksInContent } from '../lib/wikilink';
 import { refreshAllLinkResolutions, syncLinksForDocument } from './links';
 import { removeFromSearchIndex, updateSearchIndex } from '../lib/search';
+import { mirrorDelete, mirrorWrite } from '../lib/localFolder';
 
 async function nextSortIndex(parentPath: string): Promise<number> {
   const siblings = await db.documents.filter((d) => dirname(d.path) === parentPath).toArray();
@@ -46,14 +47,53 @@ export async function createDocument(parentPath: string, name: string, isFolder:
   };
   await db.documents.put(doc);
   updateSearchIndex(doc);
+  void mirrorWrite(doc);
   void refreshAllLinkResolutions();
+  return doc;
+}
+
+/**
+ * Creates or updates a document at an exact path, without the collision-suffixing `createDocument`
+ * does. Used only to import files scanned from a connected local folder (src/lib/localFolder.ts) —
+ * never mirrors back to the folder, since that's where the data just came from.
+ */
+export async function upsertDocumentAtPath(
+  path: string,
+  isFolder: boolean,
+  data: { content: string; tags: string[]; properties: Record<string, string> },
+): Promise<DocumentRecord> {
+  const existing = await db.documents.where('path').equals(path).first();
+  const now = Date.now();
+  if (existing) {
+    const updated: DocumentRecord = { ...existing, ...data, isFolder, updatedAt: now };
+    await db.documents.put(updated);
+    updateSearchIndex(updated);
+    return updated;
+  }
+  const doc: DocumentRecord = {
+    id: uuidv4(),
+    path,
+    title: titleFromPath(path),
+    isFolder,
+    content: data.content,
+    tags: data.tags,
+    properties: data.properties,
+    sortIndex: await nextSortIndex(dirname(path)),
+    createdAt: now,
+    updatedAt: now,
+  };
+  await db.documents.put(doc);
+  updateSearchIndex(doc);
   return doc;
 }
 
 export async function updateDocumentContent(id: string, content: string): Promise<void> {
   await db.documents.update(id, { content, updatedAt: Date.now() });
   const doc = await db.documents.get(id);
-  if (doc) updateSearchIndex(doc);
+  if (doc) {
+    updateSearchIndex(doc);
+    void mirrorWrite(doc);
+  }
   void syncLinksForDocument(id, content);
 }
 
@@ -63,7 +103,10 @@ export async function updateDocumentMetadata(
 ): Promise<void> {
   await db.documents.update(id, { ...changes, updatedAt: Date.now() });
   const doc = await db.documents.get(id);
-  if (doc) updateSearchIndex(doc);
+  if (doc) {
+    updateSearchIndex(doc);
+    void mirrorWrite(doc);
+  }
 }
 
 async function refactorWikiLinksAfterRename(oldTitle: string, newTitle: string): Promise<void> {
@@ -74,7 +117,10 @@ async function refactorWikiLinksAfterRename(oldTitle: string, newTitle: string):
     if (updated !== doc.content) {
       await db.documents.update(doc.id, { content: updated, updatedAt: Date.now() });
       const refreshed = await db.documents.get(doc.id);
-      if (refreshed) updateSearchIndex(refreshed);
+      if (refreshed) {
+        updateSearchIndex(refreshed);
+        void mirrorWrite(refreshed);
+      }
       void syncLinksForDocument(doc.id, updated);
     }
   }
@@ -91,19 +137,27 @@ export async function renameDocument(id: string, newName: string): Promise<void>
   const newPath = uniquePath(parentPath, filename, existingPaths);
   const newTitle = titleFromPath(newPath);
 
+  const descendants = doc.isFolder ? existing.filter((d) => d.id !== id && isDescendantPath(d.path, doc.path)) : [];
+  const descendantIds = descendants.map((d) => d.id);
+
   await db.transaction('rw', db.documents, async () => {
     await db.documents.update(id, { path: newPath, title: newTitle, updatedAt: Date.now() });
-    if (doc.isFolder) {
-      const descendants = existing.filter((d) => d.id !== id && isDescendantPath(d.path, doc.path));
-      for (const descendant of descendants) {
-        const rest = descendant.path.slice(doc.path.length);
-        await db.documents.update(descendant.id, { path: `${newPath}${rest}` });
-      }
+    for (const descendant of descendants) {
+      const rest = descendant.path.slice(doc.path.length);
+      await db.documents.update(descendant.id, { path: `${newPath}${rest}` });
     }
   });
 
   const renamed = await db.documents.get(id);
-  if (renamed) updateSearchIndex(renamed);
+  if (renamed) {
+    updateSearchIndex(renamed);
+    void mirrorDelete(doc.path);
+    void mirrorWrite(renamed);
+  }
+  for (const descendantId of descendantIds) {
+    const refreshed = await db.documents.get(descendantId);
+    if (refreshed) void mirrorWrite(refreshed);
+  }
 
   if (!doc.isFolder && oldTitle.toLowerCase() !== newTitle.toLowerCase()) {
     void refactorWikiLinksAfterRename(oldTitle, newTitle);
@@ -122,17 +176,26 @@ export async function moveDocument(id: string, newParentPath: string): Promise<v
   const existingPaths = new Set(existing.filter((d) => d.id !== id).map((d) => d.path));
   const newPath = uniquePath(newParentPath, name, existingPaths);
   const newSortIndex = await nextSortIndex(newParentPath);
+  const descendants = doc.isFolder ? existing.filter((d) => d.id !== id && isDescendantPath(d.path, doc.path)) : [];
+  const descendantIds = descendants.map((d) => d.id);
 
   await db.transaction('rw', db.documents, async () => {
     await db.documents.update(id, { path: newPath, sortIndex: newSortIndex, updatedAt: Date.now() });
-    if (doc.isFolder) {
-      const descendants = existing.filter((d) => d.id !== id && isDescendantPath(d.path, doc.path));
-      for (const descendant of descendants) {
-        const rest = descendant.path.slice(doc.path.length);
-        await db.documents.update(descendant.id, { path: `${newPath}${rest}` });
-      }
+    for (const descendant of descendants) {
+      const rest = descendant.path.slice(doc.path.length);
+      await db.documents.update(descendant.id, { path: `${newPath}${rest}` });
     }
   });
+
+  const moved = await db.documents.get(id);
+  if (moved) {
+    void mirrorDelete(doc.path);
+    void mirrorWrite(moved);
+  }
+  for (const descendantId of descendantIds) {
+    const refreshed = await db.documents.get(descendantId);
+    if (refreshed) void mirrorWrite(refreshed);
+  }
   void refreshAllLinkResolutions();
 }
 
@@ -157,5 +220,7 @@ export async function deleteDocument(id: string): Promise<void> {
     }
   });
   for (const docId of idsToDelete) removeFromSearchIndex(docId);
+  // A folder's removeEntry({recursive:true}) takes its whole subtree with it in one call.
+  void mirrorDelete(doc.path);
   void refreshAllLinkResolutions();
 }

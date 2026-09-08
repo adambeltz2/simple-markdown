@@ -1,8 +1,43 @@
-.app-shell {
+.app-root {
   display: flex;
+  flex-direction: column;
   height: 100%;
   width: 100%;
+}
+
+.app-shell {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
   position: relative;
+}
+
+.app-footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 3px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-alt);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.app-footer__version {
+  font-family: var(--mono);
+}
+
+.app-footer__github {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-dim);
+}
+
+.app-footer__github:hover {
+  color: var(--text);
 }
 
 button {
@@ -57,6 +92,43 @@ input:not([type]) {
 .sidebar__actions button {
   flex: 1;
   font-size: 12px;
+}
+
+.sidebar__folder-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 10px;
+}
+
+.sidebar__folder-connect {
+  width: 100%;
+  font-size: 12px;
+  text-align: left;
+}
+
+.sidebar__folder-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.sidebar__folder-disconnect {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  padding: 0 4px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.sidebar__folder-disconnect:hover {
+  background: var(--bg-hover);
+  color: var(--text);
 }
 
 .sidebar__tree {

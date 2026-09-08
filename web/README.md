@@ -13,8 +13,15 @@ A web-based, offline-first personal knowledge management application. It combine
 - **`[[Wiki-links]]`** between notes, with fuzzy-ranked autocomplete and a live backlinks panel.
 - **Frontmatter-backed metadata** — tags and arbitrary key/value properties, edited via the
   context sidebar and stored as real YAML frontmatter on save.
-- **Single-document import/export** of `.md` files; whole-vault import/export is not built yet
-  (see `backlog.md`).
+- **Persist to a real local folder** (desktop Chrome/Edge, via the File System Access API) — connect
+  a folder from `+ Connect local folder` in the sidebar and every document becomes a real, portable
+  `.md` file on disk (nested folders included), kept in sync as you edit. This is the actual answer
+  to "how do I get real files, not just browser storage" — IndexedDB remains a local cache/index on
+  top either way. See `src/lib/localFolder.ts`. Not available on mobile browsers or Safari — no
+  browser exposes an equivalent API there yet — where single-document import/export
+  (below) is the only way to get files out.
+- **Single-document import/export** of `.md` files everywhere else; whole-vault zip import/export
+  for browsers without folder-binding is not built yet (see `backlog.md`).
 - **Responsive layout:** a 3-column desktop view (file tree / editor / metadata), collapsing to a
   single full-width pane below 768px — note list → editor (with a back button) → metadata as a
   slide-in drawer. See `src/App.css`'s "Mobile (single-pane) layout" section.
@@ -46,14 +53,19 @@ src/
 │   ├── MarkdownEditor.tsx      # TipTap instance + formatting toolbar
 │   └── extensions/wikiLink.ts  # Custom TipTap node for [[wiki-links]] + suggestion popup
 ├── db/
-│   ├── db.ts                   # Dexie schema (documents, links)
-│   ├── documents.ts            # CRUD: create/rename/move/reorder/delete, keeps search index in sync
+│   ├── db.ts                   # Dexie schema (documents, links, settings)
+│   ├── documents.ts            # CRUD: create/rename/move/reorder/delete, keeps search index +
+│   │                             connected local folder (if any) in sync
 │   └── links.ts                 # Wiki-link resolution + backlinks
 ├── hooks/
-│   ├── useAppState.tsx          # App-wide context: documents, selection, search, panel state
+│   ├── useAppState.tsx          # App-wide context: documents, selection, search, panel state,
+│   │                             local-folder connection state
 │   └── useDebouncedCallback.ts  # Debounce helper used for autosave
 └── lib/                          # Pure, unit-tested logic — pathUtils, frontmatter, wikilink,
-                                    fuzzyMatch, search (no React/DOM dependencies)
+                                    fuzzyMatch, search, localFolder (no React dependencies; the
+                                    File System Access API calls in localFolder.ts are isolated
+                                    behind small structural interfaces so the scan/write/delete
+                                    logic is testable without a browser)
 ```
 
 ## 🗄 Database Schema
@@ -106,5 +118,17 @@ expose through the API, so it'd need redoing if the repo were ever recreated).
 
 See `backlog.md` for the full, current list. The most notable gaps right now: no offline/PWA
 support (so, ironically, an "offline-first" app still needs network to load itself the first
-time — see the backlog item), no whole-vault import/export, and no UI feedback for in-progress
-autosaves.
+time — see the backlog item), local-folder sync only re-scans on connect (no live watching of
+external changes, no conflict resolution), no whole-vault zip import/export for browsers without
+folder-binding, and no UI feedback for in-progress autosaves.
+
+## Verification notes (local-folder feature)
+
+The File System Access API requires a real user gesture and a native OS folder picker, so the
+connect flow itself can't be driven headlessly in CI or by an agent. What *is* verified: the
+scan/write/delete logic against a fake in-memory filesystem (`src/lib/localFolder.test.ts`),
+`tsc -b` type-checking cleanly against the real DOM `FileSystemDirectoryHandle`/`FileSystemFileHandle`
+types, and the connect/disconnect UI rendering correctly (and hiding on unsupported browsers) via
+Playwright. The actual "click Connect, pick a folder, see files land on disk" round trip needs a
+manual check in a real desktop Chrome/Edge — do that before relying on it for anything you can't
+afford to lose.

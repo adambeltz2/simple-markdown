@@ -14,7 +14,19 @@ import {
 import type { DocumentRecord, TreeNode } from '../types';
 
 export default function Sidebar() {
-  const { documents, selectedId, setSelectedId, searchQuery, setSearchQuery, searchResultIds } = useAppState();
+  const {
+    documents,
+    selectedId,
+    setSelectedId,
+    searchQuery,
+    setSearchQuery,
+    searchResultIds,
+    folderStatus,
+    folderName,
+    connectFolder,
+    reconnectFolder,
+    disconnectFolder,
+  } = useAppState();
   const tree = useMemo(() => buildTree(documents), [documents]);
   const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set(documents.filter((d) => d.isFolder).map((d) => d.path)),
@@ -98,6 +110,35 @@ export default function Sidebar() {
         <button onClick={handleImportClick}>+ Import</button>
         <input ref={fileInputRef} type="file" accept=".md,text/markdown" hidden onChange={handleImportFile} />
       </div>
+      {folderStatus !== 'unsupported' && (
+        <div className="sidebar__folder-status">
+          {folderStatus === 'disconnected' && (
+            <button className="sidebar__folder-connect" onClick={() => void connectFolder()}>
+              🔗 Connect local folder
+            </button>
+          )}
+          {folderStatus === 'connected' && (
+            <>
+              <span className="sidebar__folder-name" title={`Synced with local folder "${folderName}"`}>
+                📁 {folderName}
+              </span>
+              <button
+                className="sidebar__folder-disconnect"
+                title="Disconnect local folder"
+                aria-label="Disconnect local folder"
+                onClick={() => void disconnectFolder()}
+              >
+                &times;
+              </button>
+            </>
+          )}
+          {folderStatus === 'needs-permission' && (
+            <button className="sidebar__folder-connect" onClick={() => void reconnectFolder()}>
+              ⚠️ Reconnect "{folderName}"
+            </button>
+          )}
+        </div>
+      )}
       <div className="sidebar__tree" onDragOver={(e) => e.preventDefault()} onDrop={handleDropOnRoot}>
         {tree.map((node) => (
           <TreeNodeItem
