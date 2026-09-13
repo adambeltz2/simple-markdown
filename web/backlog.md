@@ -29,6 +29,8 @@ to the bottom.
 
 [FEATURE] Theme follows `prefers-color-scheme` only (src/index.css) with no in-app override — a user whose OS is light but who wants the app dark (or vice versa) has no way to do that. Add a light/dark/system toggle, e.g. in the context sidebar.
 
+[DEBT] The skipped-files warning after connecting a local folder (src/components/Sidebar.tsx) is a flat list of paths in one banner — no retry-this-file action, no detail on *why* a file was skipped (shown only in the console), and it's cleared by "reconnect" re-scanning rather than something the user can act on per-file.
+
 [DEBT] `.editor-toolbar` (src/App.css) has no overflow handling — it's a plain flex row with no `overflow-x` or wrap. Fine today (it currently fits), but a very narrow device (<360px) or a future added button could clip the row with no way to reach it. Add `overflow-x: auto` (or wrap) before that happens.
 
 [FEATURE] Drag-and-drop in the file tree supports "drop onto a folder" (move into it) and "drop onto a file" (move + reorder after it), but there's no visual before/after drop-position indicator. Purely cosmetic polish. Files: src/components/Sidebar.tsx.

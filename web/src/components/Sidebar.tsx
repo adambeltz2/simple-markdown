@@ -23,6 +23,8 @@ export default function Sidebar() {
     searchResultIds,
     folderStatus,
     folderName,
+    folderSkippedPaths,
+    dismissFolderWarning,
     connectFolder,
     reconnectFolder,
     disconnectFolder,
@@ -137,6 +139,22 @@ export default function Sidebar() {
               ⚠️ Reconnect "{folderName}"
             </button>
           )}
+        </div>
+      )}
+      {folderSkippedPaths.length > 0 && (
+        <div className="sidebar__folder-warning">
+          <span>
+            Skipped {folderSkippedPaths.length} item{folderSkippedPaths.length === 1 ? '' : 's'} that couldn't be
+            read: {folderSkippedPaths.join(', ')}
+          </span>
+          <button
+            className="sidebar__folder-warning-dismiss"
+            title="Dismiss"
+            aria-label="Dismiss warning"
+            onClick={dismissFolderWarning}
+          >
+            &times;
+          </button>
         </div>
       )}
       <div className="sidebar__tree" onDragOver={(e) => e.preventDefault()} onDrop={handleDropOnRoot}>

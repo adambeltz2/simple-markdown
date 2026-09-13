@@ -131,6 +131,34 @@ input:not([type]) {
   color: var(--text);
 }
 
+.sidebar__folder-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0 10px 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--danger) 12%, var(--bg-alt));
+  color: var(--danger);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.sidebar__folder-warning span {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.sidebar__folder-warning-dismiss {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0 2px;
+  font-size: 13px;
+}
+
 .sidebar__tree {
   flex: 1;
   overflow-y: auto;

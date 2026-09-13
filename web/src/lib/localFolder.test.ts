@@ -86,16 +86,18 @@ describe('scanMarkdownFiles', () => {
     const root = new FakeDirectory('root');
     root.children.set('Home.md', new FakeFile('Home.md', '# Home'));
 
-    const entries = await scanMarkdownFiles(root);
+    const { entries, skipped } = await scanMarkdownFiles(root);
 
     expect(entries).toEqual([{ path: '/Home.md', isFolder: false, content: '# Home' }]);
+    expect(skipped).toEqual([]);
   });
 
   it('ignores non-markdown files', async () => {
     const root = new FakeDirectory('root');
     root.children.set('notes.txt', new FakeFile('notes.txt', 'ignored'));
 
-    expect(await scanMarkdownFiles(root)).toEqual([]);
+    const { entries } = await scanMarkdownFiles(root);
+    expect(entries).toEqual([]);
   });
 
   it('recurses into subfolders, emitting a folder entry plus its files', async () => {
@@ -104,7 +106,7 @@ describe('scanMarkdownFiles', () => {
     projects.children.set('Wiki.md', new FakeFile('Wiki.md', 'content'));
     root.children.set('Projects', projects);
 
-    const entries = await scanMarkdownFiles(root);
+    const { entries } = await scanMarkdownFiles(root);
 
     expect(entries).toEqual([
       { path: '/Projects', isFolder: true, content: '' },
@@ -116,7 +118,59 @@ describe('scanMarkdownFiles', () => {
     const root = new FakeDirectory('root');
     root.children.set('Empty', new FakeDirectory('Empty'));
 
-    expect(await scanMarkdownFiles(root)).toEqual([{ path: '/Empty', isFolder: true, content: '' }]);
+    const { entries } = await scanMarkdownFiles(root);
+    expect(entries).toEqual([{ path: '/Empty', isFolder: true, content: '' }]);
+  });
+
+  it('skips a file that fails to read and still returns its siblings', async () => {
+    const root = new FakeDirectory('root');
+    const broken = new FakeFile('Broken.md', 'x');
+    broken.getFile = async () => {
+      throw new Error('simulated read failure');
+    };
+    root.children.set('Broken.md', broken);
+    root.children.set('Good.md', new FakeFile('Good.md', 'fine'));
+
+    const { entries, skipped } = await scanMarkdownFiles(root);
+
+    expect(entries).toEqual([{ path: '/Good.md', isFolder: false, content: 'fine' }]);
+    expect(skipped).toEqual(['/Broken.md']);
+  });
+
+  it('skips a subfolder that fails to enumerate and still returns other root entries', async () => {
+    const root = new FakeDirectory('root');
+    const broken = new FakeDirectory('Broken');
+    // oxlint-disable-next-line require-yield -- deliberately throws before ever yielding
+    broken.entries = async function* () {
+      throw new Error('simulated enumeration failure');
+    };
+    root.children.set('Broken', broken);
+    root.children.set('Good.md', new FakeFile('Good.md', 'fine'));
+
+    const { entries, skipped } = await scanMarkdownFiles(root);
+
+    expect(entries).toEqual([{ path: '/Good.md', isFolder: false, content: 'fine' }]);
+    expect(skipped).toEqual(['/Broken']);
+  });
+
+  it('skips only the bad file within an otherwise-good subfolder', async () => {
+    const root = new FakeDirectory('root');
+    const projects = new FakeDirectory('Projects');
+    const broken = new FakeFile('Bad.md', 'x');
+    broken.getFile = async () => {
+      throw new Error('simulated read failure');
+    };
+    projects.children.set('Bad.md', broken);
+    projects.children.set('Good.md', new FakeFile('Good.md', 'fine'));
+    root.children.set('Projects', projects);
+
+    const { entries, skipped } = await scanMarkdownFiles(root);
+
+    expect(entries).toEqual([
+      { path: '/Projects', isFolder: true, content: '' },
+      { path: '/Projects/Good.md', isFolder: false, content: 'fine' },
+    ]);
+    expect(skipped).toEqual(['/Projects/Bad.md']);
   });
 });
 

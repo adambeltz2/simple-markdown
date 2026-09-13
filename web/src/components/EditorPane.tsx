@@ -9,7 +9,7 @@ import MarkdownEditor from '../editor/MarkdownEditor';
 import type { DocumentSummary } from '../types';
 
 export default function EditorPane() {
-  const { selectedId, setSelectedId, documents, toggleRightSidebar } = useAppState();
+  const { selectedId, setSelectedId, documents, toggleRightSidebar, folderStatus } = useAppState();
   const activeDoc = useLiveQuery(
     async () => (selectedId ? db.documents.get(selectedId) : undefined),
     [selectedId],
@@ -82,9 +82,11 @@ export default function EditorPane() {
         <button className="editor-pane__meta-toggle" title="Note info" onClick={toggleRightSidebar}>
           ⓘ
         </button>
-        <button className="editor-pane__export" onClick={handleExport}>
-          Export .md
-        </button>
+        {folderStatus !== 'connected' && (
+          <button className="editor-pane__export" onClick={handleExport}>
+            Export .md
+          </button>
+        )}
       </header>
       <MarkdownEditor
         key={activeDoc.id}

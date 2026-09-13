@@ -10,6 +10,7 @@ import {
   reconnectSavedFolder,
   supportsLocalFolder,
   tryReconnectSavedFolder,
+  type ActivationResult,
 } from '../lib/localFolder';
 
 export type LocalFolderStatus = 'unsupported' | 'disconnected' | 'connected' | 'needs-permission';
@@ -25,6 +26,8 @@ interface AppStateValue {
   toggleRightSidebar: () => void;
   folderStatus: LocalFolderStatus;
   folderName: string | null;
+  folderSkippedPaths: string[];
+  dismissFolderWarning: () => void;
   connectFolder: () => Promise<void>;
   reconnectFolder: () => Promise<void>;
   disconnectFolder: () => Promise<void>;
@@ -44,6 +47,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     supportsLocalFolder() ? 'disconnected' : 'unsupported',
   );
   const [folderName, setFolderName] = useState<string | null>(null);
+  const [folderSkippedPaths, setFolderSkippedPaths] = useState<string[]>([]);
 
   useEffect(() => {
     if (!indexReady) {
@@ -60,9 +64,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     void (async () => {
       const savedName = await getSavedFolderName();
       if (!savedName) return;
-      const handle = await tryReconnectSavedFolder();
+      const result = await tryReconnectSavedFolder();
       setFolderName(savedName);
-      setFolderStatus(handle ? 'connected' : 'needs-permission');
+      setFolderStatus(result ? 'connected' : 'needs-permission');
+      if (result) setFolderSkippedPaths(result.skippedPaths);
     })();
   }, []);
 
@@ -72,11 +77,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, indexReady]);
 
+  const applyActivation = (result: ActivationResult) => {
+    setFolderName(result.handle.name);
+    setFolderStatus('connected');
+    setFolderSkippedPaths(result.skippedPaths);
+  };
+
   const connectFolder = async () => {
     try {
-      const { handle } = await connectLocalFolder();
-      setFolderName(handle.name);
-      setFolderStatus('connected');
+      applyActivation(await connectLocalFolder());
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return; // user cancelled the picker
       console.warn('Failed to connect a local folder:', err);
@@ -84,17 +93,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   };
 
   const reconnectFolder = async () => {
-    const handle = await reconnectSavedFolder();
-    if (handle) {
-      setFolderName(handle.name);
-      setFolderStatus('connected');
-    }
+    const result = await reconnectSavedFolder();
+    if (result) applyActivation(result);
   };
 
   const disconnectFolder = async () => {
     await disconnectLocalFolder();
     setFolderName(null);
     setFolderStatus('disconnected');
+    setFolderSkippedPaths([]);
   };
 
   const value: AppStateValue = {
@@ -108,6 +115,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     toggleRightSidebar: () => setRightSidebarOpen((v) => !v),
     folderStatus,
     folderName,
+    folderSkippedPaths,
+    dismissFolderWarning: () => setFolderSkippedPaths([]),
     connectFolder,
     reconnectFolder,
     disconnectFolder,
