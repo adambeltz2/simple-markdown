@@ -12,6 +12,8 @@ A native Android app for writing and reading Markdown, built with Kotlin and Jet
 - **Import** any text/markdown file from device storage (via the system file picker).
 - **Export** to any location on device storage, or **share** to another app.
 - Handles files opened from other apps (`ACTION_VIEW` / `ACTION_SEND` for `.md`/text content).
+- **Footer** on the document list showing the app version (from `versionName` in
+  `app/build.gradle.kts`, exposed via `BuildConfig.VERSION_NAME`) and a link to this repo on GitHub.
 
 ## Project structure
 

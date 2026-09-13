@@ -1,5 +1,7 @@
 package com.simplemarkdown.app.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,11 +14,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.simplemarkdown.app.BuildConfig
+import com.simplemarkdown.app.R
 import com.simplemarkdown.app.data.DocumentRepository
 import com.simplemarkdown.app.data.MarkdownDocument
+
+private const val REPO_URL = "https://github.com/adambeltz2/simple-markdown"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +52,7 @@ fun DocumentListScreen(
                 )
             }
         },
+        bottomBar = { AppFooter() },
     ) { padding ->
         if (documents.isEmpty()) {
             EmptyState(Modifier.padding(padding))
@@ -60,6 +69,38 @@ fun DocumentListScreen(
                 }
                 item { Spacer(Modifier.height(72.dp)) }
             }
+        }
+    }
+}
+
+@Composable
+private fun AppFooter() {
+    val context = LocalContext.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "v${BuildConfig.VERSION_NAME}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.outline,
+        )
+        Spacer(Modifier.width(10.dp))
+        IconButton(
+            onClick = {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(REPO_URL)))
+            },
+            modifier = Modifier.size(28.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_github),
+                contentDescription = "View source on GitHub",
+                tint = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.size(16.dp),
+            )
         }
     }
 }
